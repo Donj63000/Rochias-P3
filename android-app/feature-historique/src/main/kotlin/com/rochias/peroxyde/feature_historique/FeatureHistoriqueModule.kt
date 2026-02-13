@@ -1,0 +1,3 @@
+package com.rochias.peroxyde.feature_historique
+
+object FeatureHistoriqueModule
