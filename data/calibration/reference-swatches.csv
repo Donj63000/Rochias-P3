@@ -1,0 +1,9 @@
+ppm,L_star,a_star,b_star,sigma_deltaE,notes
+0,92.10,-1.20,3.10,0.70,blanc témoin
+50,87.40,0.30,9.80,0.85,transition faible
+100,82.20,2.10,17.40,0.90,seuil bas conformité
+200,74.50,5.60,29.10,1.00,zone nominale basse
+300,67.20,8.90,40.80,1.10,zone nominale médiane
+400,60.40,11.50,50.70,1.20,zone nominale haute
+500,54.30,13.80,58.90,1.30,seuil haut conformité
+600,49.70,15.20,65.40,1.50,au-delà plage cible
