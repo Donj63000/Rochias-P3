@@ -1,0 +1,10 @@
+image_id,expected_status,expected_ppm,ppm_tolerance,expected_message,min_confidence,scenario
+val-001.jpg,accepted,95,15,ATTENTION TAUX BAS,0.80,limite basse
+val-002.jpg,accepted,100,15,CONFORME POUR LA PRODUCTION,0.80,seuil conformité bas
+val-003.jpg,accepted,320,15,CONFORME POUR LA PRODUCTION,0.80,nominal
+val-004.jpg,accepted,500,15,CONFORME POUR LA PRODUCTION,0.80,seuil conformité haut
+val-005.jpg,accepted,505,15,ALERTE SEUIL DÉPASSÉ — PRODUCTION NON CONFORME,0.80,limite haute
+val-006.jpg,rejected,,0,Ambiance mauvaise prise refusée,0.00,flou volontaire
+val-007.jpg,rejected,,0,Ambiance mauvaise prise refusée,0.00,reflet spéculaire
+val-008.jpg,rejected,,0,Ambiance mauvaise prise refusée,0.00,angle excessif
+val-009.jpg,rejected,,0,Ambiance mauvaise prise refusée,0.00,fond non neutre
