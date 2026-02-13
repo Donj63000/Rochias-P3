@@ -1,6 +1,7 @@
 mod api;
 mod domain;
 mod reporting;
+mod rules;
 mod storage;
 mod validation;
 
