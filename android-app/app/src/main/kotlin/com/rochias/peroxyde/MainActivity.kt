@@ -137,6 +137,10 @@ private fun TestScreen(
                             "Capture refusée : ${flowResult.capture.operatorMessages.joinToString()}"
                         }
 
+                        is TestFlowResult.AnalysisRejected -> {
+                            "${flowResult.operatorMessage} (${flowResult.reasons.joinToString()})"
+                        }
+
                         is TestFlowResult.Completed -> {
                             val decision = when (flowResult.record.complianceStatus) {
                                 ComplianceStatus.ALERT_LOW -> "ATTENTION TAUX BAS"
