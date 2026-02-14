@@ -15,3 +15,8 @@ android {
 kotlin {
     jvmToolchain(17)
 }
+
+dependencies {
+    implementation(project(":core-db"))
+    testImplementation("junit:junit:4.13.2")
+}
