@@ -9,7 +9,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-const val ANALYSIS_RULES_VERSION: String = "analysis-rules/v1"
+const val ANALYSIS_RULES_VERSION: String = "analysis-rules/v2"
 
 private const val DEFAULT_SATURATION_CHANNEL_THRESHOLD = 250
 private const val DEFAULT_UNDEREXPOSED_CHANNEL_THRESHOLD = 12
@@ -134,7 +134,7 @@ object CoreAnalysisModule {
 
             else -> VersionedAnalysisDecision(
                 contractVersion = ANALYSIS_RULES_VERSION,
-                analysisResult = "ALERTE seuil dépassé",
+                analysisResult = "ALERTE SEUIL DÉPASSÉ — PRODUCTION NON CONFORME",
                 complianceStatus = "SEUIL_DEPASSE",
                 recommendedAction = "Arrêt/notification/recontrôle immédiats.",
             )

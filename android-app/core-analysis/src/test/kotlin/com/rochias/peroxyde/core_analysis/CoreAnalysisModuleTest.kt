@@ -14,7 +14,7 @@ class CoreAnalysisModuleTest {
         assertEquals("ATTENTION TAUX BAS", CoreAnalysisModule.evaluatePpm(95).analysisResult)
         assertEquals("CONFORME POUR LA PRODUCTION", CoreAnalysisModule.evaluatePpm(100).analysisResult)
         assertEquals("CONFORME POUR LA PRODUCTION", CoreAnalysisModule.evaluatePpm(500).analysisResult)
-        assertEquals("ALERTE seuil dépassé", CoreAnalysisModule.evaluatePpm(505).analysisResult)
+        assertEquals("ALERTE SEUIL DÉPASSÉ — PRODUCTION NON CONFORME", CoreAnalysisModule.evaluatePpm(505).analysisResult)
     }
 
     @Test
@@ -95,12 +95,12 @@ class CoreAnalysisModuleTest {
 
     private fun readContractJson(): String {
         val candidates = listOf(
-            File("../data/validation/analysis_rules_contract_v1.json"),
-            File("../../data/validation/analysis_rules_contract_v1.json"),
+            File("../data/validation/analysis_rules_contract_v2.json"),
+            File("../../data/validation/analysis_rules_contract_v2.json"),
         )
 
         val contractFile = candidates.firstOrNull { it.exists() }
-            ?: throw IllegalStateException("Cannot locate analysis_rules_contract_v1.json")
+            ?: throw IllegalStateException("Cannot locate analysis_rules_contract_v2.json")
 
         return contractFile.readText()
     }

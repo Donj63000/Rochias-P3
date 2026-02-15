@@ -1,0 +1,29 @@
+{
+  "contract_version": "analysis-rules/v2",
+  "cases": [
+    {
+      "ppm": 99,
+      "analysis_result": "ATTENTION TAUX BAS",
+      "compliance_status": "MAINTENANCE_QUALITE",
+      "recommended_action": "Appliquer les consignes maintenance/qualité."
+    },
+    {
+      "ppm": 100,
+      "analysis_result": "CONFORME POUR LA PRODUCTION",
+      "compliance_status": "CONFORME",
+      "recommended_action": "Poursuivre la production normale."
+    },
+    {
+      "ppm": 500,
+      "analysis_result": "CONFORME POUR LA PRODUCTION",
+      "compliance_status": "CONFORME",
+      "recommended_action": "Poursuivre la production normale."
+    },
+    {
+      "ppm": 501,
+      "analysis_result": "ALERTE SEUIL DÉPASSÉ — PRODUCTION NON CONFORME",
+      "compliance_status": "SEUIL_DEPASSE",
+      "recommended_action": "Arrêt/notification/recontrôle immédiats."
+    }
+  ]
+}

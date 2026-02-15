@@ -25,7 +25,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.rochias.peroxyde.core_camera.CaptureInput
 import com.rochias.peroxyde.core_db.AnalysisLocalStore
-import com.rochias.peroxyde.core_db.ComplianceStatus
+import com.rochias.peroxyde.core_analysis.CoreAnalysisModule
 import com.rochias.peroxyde.core_db.CoreDbModule
 import com.rochias.peroxyde.core_sync.SyncApi
 import com.rochias.peroxyde.core_sync.SyncEngine
@@ -142,12 +142,8 @@ private fun TestScreen(
                         }
 
                         is TestFlowResult.Completed -> {
-                            val decision = when (flowResult.record.complianceStatus) {
-                                ComplianceStatus.ALERT_LOW -> "ATTENTION TAUX BAS"
-                                ComplianceStatus.COMPLIANT -> "CONFORME POUR LA PRODUCTION"
-                                ComplianceStatus.ALERT_HIGH -> "ALERTE SEUIL DÉPASSÉ"
-                            }
-                            "Taux estimé = ${flowResult.record.ppm} PPM — $decision"
+                            val decision = CoreAnalysisModule.evaluatePpm(flowResult.record.ppm)
+                            "Taux estimé = ${flowResult.record.ppm} PPM — ${decision.contractVersion} — ${decision.analysisResult}"
                         }
                     }
                 },
