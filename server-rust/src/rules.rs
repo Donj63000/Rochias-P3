@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-pub const ANALYSIS_RULES_VERSION: &str = "analysis-rules/v1";
+pub const ANALYSIS_RULES_VERSION: &str = "analysis-rules/v2";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VersionedAnalysisDecision {
@@ -31,7 +31,7 @@ pub fn evaluate_ppm(ppm: u32) -> VersionedAnalysisDecision {
 
     VersionedAnalysisDecision {
         contract_version: ANALYSIS_RULES_VERSION.to_string(),
-        analysis_result: "ALERTE seuil dépassé".to_string(),
+        analysis_result: "ALERTE SEUIL DÉPASSÉ — PRODUCTION NON CONFORME".to_string(),
         compliance_status: "SEUIL_DEPASSE".to_string(),
         recommended_action: "Arrêt/notification/recontrôle immédiats.".to_string(),
     }
@@ -68,13 +68,16 @@ mod tests {
         assert_eq!(at_500.analysis_result, "CONFORME POUR LA PRODUCTION");
 
         let at_501 = evaluate_ppm(501);
-        assert_eq!(at_501.analysis_result, "ALERTE seuil dépassé");
+        assert_eq!(
+            at_501.analysis_result,
+            "ALERTE SEUIL DÉPASSÉ — PRODUCTION NON CONFORME"
+        );
     }
 
     #[test]
     fn matches_json_contract_cases() {
         let raw_contract =
-            std::fs::read_to_string("../data/validation/analysis_rules_contract_v1.json")
+            std::fs::read_to_string("../data/validation/analysis_rules_contract_v2.json")
                 .expect("read contract json");
         let contract: Contract = serde_json::from_str(&raw_contract).expect("parse contract json");
 
