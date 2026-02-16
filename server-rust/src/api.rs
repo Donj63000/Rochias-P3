@@ -1,6 +1,6 @@
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{header, HeaderValue, StatusCode},
     response::IntoResponse,
     Json,
 };
@@ -13,7 +13,8 @@ use crate::{
     domain::{
         AcquisitionMetadata, Analysis, ComplianceStatus, ImageReference, ServerLifecycleStatus,
     },
-    storage::AnalysisStore,
+    reporting,
+    storage::{AnalysisStore, StorageError, UpsertResult},
     validation,
 };
 
@@ -83,6 +84,12 @@ pub struct AnalysisAckResponse {
     pub ack_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct AuditExportPayload {
+    pub from: Option<DateTime<Utc>>,
+    pub to: Option<DateTime<Utc>>,
+}
+
 pub async fn health() -> Json<serde_json::Value> {
     Json(json!({"status":"ok","service":"peroxyde-server"}))
 }
@@ -118,22 +125,38 @@ pub async fn create_analysis(
         )
     })?;
 
-    store.insert(analysis.clone()).await;
-
-    Ok((
-        StatusCode::ACCEPTED,
-        Json(CreateAnalysisResponse {
-            server_analysis_id: analysis.id,
-            server_lifecycle_status: analysis.server_lifecycle_status,
-            received_at: analysis.received_at,
-        }),
-    ))
+    match store
+        .upsert_analysis(analysis)
+        .await
+        .map_err(storage_error)?
+    {
+        UpsertResult::Inserted(saved) => Ok((
+            StatusCode::ACCEPTED,
+            Json(CreateAnalysisResponse {
+                server_analysis_id: saved.id,
+                server_lifecycle_status: saved.server_lifecycle_status,
+                received_at: saved.received_at,
+            }),
+        )),
+        UpsertResult::IdempotentReplay(saved) => Ok((
+            StatusCode::OK,
+            Json(CreateAnalysisResponse {
+                server_analysis_id: saved.id,
+                server_lifecycle_status: saved.server_lifecycle_status,
+                received_at: saved.received_at,
+            }),
+        )),
+        UpsertResult::Conflict => Err((
+            StatusCode::CONFLICT,
+            Json(json!({"error":"client_analysis_id already exists with different payload"})),
+        )),
+    }
 }
 
 pub async fn analyses_history(
     State(store): State<AnalysisStore>,
     Query(query): Query<HistoryQuery>,
-) -> Json<HistoryResponse> {
+) -> Result<Json<HistoryResponse>, (StatusCode, Json<serde_json::Value>)> {
     let limit = query.limit.unwrap_or(20).clamp(1, 100);
     let offset = query
         .cursor
@@ -143,7 +166,8 @@ pub async fn analyses_history(
 
     let (analyses, next_cursor) = store
         .list_paginated(limit, offset, query.sample_id.as_deref())
-        .await;
+        .await
+        .map_err(storage_error)?;
 
     let items = analyses
         .into_iter()
@@ -165,7 +189,7 @@ pub async fn analyses_history(
         })
         .collect();
 
-    Json(HistoryResponse { items, next_cursor })
+    Ok(Json(HistoryResponse { items, next_cursor }))
 }
 
 pub async fn analysis_ack(
@@ -173,7 +197,7 @@ pub async fn analysis_ack(
     Path(server_analysis_id): Path<Uuid>,
 ) -> impl IntoResponse {
     match store.find_by_id(server_analysis_id).await {
-        Some(analysis) => (
+        Ok(Some(analysis)) => (
             StatusCode::OK,
             Json(AnalysisAckResponse {
                 server_analysis_id: analysis.id,
@@ -185,12 +209,51 @@ pub async fn analysis_ack(
             }),
         )
             .into_response(),
-        None => (
+        Ok(None) => (
             StatusCode::NOT_FOUND,
             Json(json!({"error":"analysis not found"})),
         )
             .into_response(),
+        Err(err) => storage_error(err).into_response(),
     }
+}
+
+pub async fn export_audit_csv(
+    State(store): State<AnalysisStore>,
+    Json(payload): Json<AuditExportPayload>,
+) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+    let analyses = store
+        .list_for_audit_csv(payload.from, payload.to)
+        .await
+        .map_err(storage_error)?;
+
+    let csv = reporting::audit_csv(&analyses).map_err(|err| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": err})),
+        )
+    })?;
+
+    Ok((
+        [
+            (
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("text/csv; charset=utf-8"),
+            ),
+            (
+                header::CONTENT_DISPOSITION,
+                HeaderValue::from_static("attachment; filename=registre-audit.csv"),
+            ),
+        ],
+        csv,
+    ))
+}
+
+fn storage_error(err: StorageError) -> (StatusCode, Json<serde_json::Value>) {
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(json!({"error":"storage_failure","details":err.to_string()})),
+    )
 }
 
 #[cfg(test)]
@@ -205,8 +268,8 @@ mod tests {
 
     use crate::storage::AnalysisStore;
 
-    fn test_app() -> Router {
-        let store = AnalysisStore::default();
+    async fn test_app() -> Router {
+        let store = AnalysisStore::new_in_memory().await.unwrap();
         Router::new()
             .route("/v1/analyses", post(super::create_analysis))
             .route("/v1/analyses/history", get(super::analyses_history))
@@ -258,7 +321,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_analysis_nominal_returns_202() {
-        let app = test_app();
+        let app = test_app().await;
 
         let response = app
             .oneshot(
@@ -281,8 +344,40 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn create_analysis_idempotent_returns_200() {
+        let app = test_app().await;
+
+        let first = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method(Method::POST)
+                    .uri("/v1/analyses")
+                    .header("content-type", "application/json")
+                    .body(Body::from(valid_payload()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(first.status(), StatusCode::ACCEPTED);
+
+        let second = app
+            .oneshot(
+                Request::builder()
+                    .method(Method::POST)
+                    .uri("/v1/analyses")
+                    .header("content-type", "application/json")
+                    .body(Body::from(valid_payload()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(second.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
     async fn create_analysis_invalid_json_returns_400() {
-        let app = test_app();
+        let app = test_app().await;
 
         let response = app
             .oneshot(
@@ -301,7 +396,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_analysis_business_validation_fails_returns_422() {
-        let app = test_app();
+        let app = test_app().await;
 
         let mut payload: serde_json::Value = serde_json::from_str(&valid_payload()).unwrap();
         payload["confidence"] = serde_json::json!(1.7);

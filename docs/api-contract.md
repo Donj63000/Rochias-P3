@@ -51,6 +51,8 @@ Base URL: `https://api.peroxyde.local/v1`
 
 ### Réponse
 - `202 Accepted` si reçu pour traitement.
+- `200 OK` si `client_analysis_id` a déjà été reçu avec un payload strictement identique (idempotence).
+- `409 Conflict` si `client_analysis_id` existe déjà avec un payload différent.
 - `400 Bad Request` si format invalide.
 - `422 Unprocessable Entity` si la validation métier (plage PPM, confiance, référence image) échoue.
 
@@ -136,7 +138,7 @@ Base URL: `https://api.peroxyde.local/v1`
 
 ## 5) Export registre audit (CSV/PDF)
 
-`POST /analyses/audit-export`
+`POST /analyses/audit-export` (CSV prêt, PDF à venir)
 
 ### Requête
 ```json
